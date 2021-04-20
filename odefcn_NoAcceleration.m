@@ -1,4 +1,4 @@
-function [dydt] = odefcn_NoAcceleration(t, params, N, rhatx, rhaty, rhatz, r, E, E0x, E0y, E0z, M, V, eps0, eps1, eps2, mu0, Lx, Ly, Lz, H0x, H0y, J, eta, R, QQQ, QQQe)
+function [dydt] = odefcn_NoAcceleration(t, params, N, E, E0x, E0y, E0z, M, V, eps0, eps1, eps2, Lx, Ly, Lz, H0x, H0y, frac, freq, QQQ, QQQe)
 %This function represents the calculation of a differential equation that
 %represents the change in angular velocity with respect ot time
 
@@ -103,7 +103,7 @@ Wey = QQQe.*(Tnewz'.*Dnx(1,:) - Tnewx'.*Dnz(1,:)); % ELECTRIC TORQUE IN Y - DIR
 Wez = QQQe.*(Tnewx'.*Dny(1,:) - Tnewy'.*Dnx(1,:)); % ELECTRIC TORQUE IN Z - DIR 
 
 % Set the magnetic field based on the current time
-H0z = 10^5*sin(t*4*pi/10);
+H0z = frac*M*sin(t*2*pi*freq + pi/2*(freq == 0));
 
 
 % Magnetic Field calculations
@@ -116,7 +116,7 @@ Hy = H0y*ones(1,N) + Hddy;
 Hz = H0z*ones(1,N) + Hddz;
 
 % Calculate magnetic torque on each particle
-DnH = Dnx(1,:).*Hx + Dny(2,:).*Hy+ Dnz(2,:).*Hz;
+DnH = Dnx(1,:).*Hx + Dny(1,:).*Hy+ Dnz(1,:).*Hz;
 
 Wx = (QQQ)*(Hx-Dnx(1,:).*DnH);
 Wy = (QQQ)*(Hy-Dny(1,:).*DnH);
