@@ -1,4 +1,4 @@
-function [data] = DPM3DconvE_NoTranslation_NoAcceleration_ode45(defaultN, volFrac, varargin)
+function [data] = DPM3DconvE_NoTranslation_NoAcceleration_ode45(defaultN, volFrac, saveFile, varargin)
 %% Input Parsing
 
 % This function was created to accept different types of input:
@@ -79,7 +79,7 @@ else
     fprintf(fid,'\n');
     fclose(fid);
     
-    %rng('default')
+    rng('default')
     x=randomhardparticles3D(N,R,dim);
     %X(:,:)    = permute(x(:,1,:),[1,3,2]);
     D(:,:)    = permute(x(:,2,:),[1,3,2]);
@@ -454,11 +454,15 @@ maxDeflection = 0;
     
     init = (D(1:3*N))';
     
+    frac = 0.5;
+    freq = 1;
+    cycle = 1/freq;
+    
     %'RelTol', 10^-8, 'AbsTol', 10^-10, 'InitialStep', 10^-4, 'MaxStep', 10^-4
     
-    options = odeset('MaxStep', 10^-4);
+    %options = odeset('RelTol', 10^-4, 'AbsTol', 10^-6);
     
-    [t, data] = ode45(@(t, params) odefcn_NoAcceleration(t, params, N, rhatx, rhaty, rhatz, r, E, E0x, E0y, E0z, M, V, eps0, eps1, eps2, mu0, Lx, Ly, Lz, H0x, H0y, J, eta, R, QQQ, QQQe), [0 0.001], init, options);
+    [t, data] = ode45(@(t, params) odefcn_NoAcceleration(t, params, N, rhatx, rhaty, rhatz, r, E, E0x, E0y, E0z, M, V, eps0, eps1, eps2, Lx, Ly, Lz, H0x, H0y, frac, freq, QQQ, QQQe), [0 3*cycle], init); %options);
     
     [it, ~] = size(t);
     
@@ -473,13 +477,23 @@ maxDeflection = 0;
         end
     end
     
+    dataSave = strcat(saveFile, '_data');
+    tSave = strcat(saveFile, '_time');
+    save(dataSave, 'data');
+    save(tSave, 't');
+    
     %D = data((3*N + 1):6*N);
     D = D./(ones(3,1)*sum(D.^2).^(1/2));
     %t  = t+h;
     
-    plotcond = 10;
-    
+    plotcond = 1; %ceil(it/1000);
+    plotval = ceil(it/6);
+    plotcond2 = plotval;
+    %plotcond = 1;
+    %tnew = zeros(1, 1000);
     for i = 1:plotcond:it
+        plothist = 0;
+        
         for j = 1:3*N
             if rem(j - 1, 3) == 0
                 tempD(1, floor(j/3) + 1) = data(i, j);
@@ -490,13 +504,56 @@ maxDeflection = 0;
             end
         end
         
-        [avg(floor(i/plotcond) + 1), std(floor(i/plotcond)+1)] = zAngles(tempD);
-        t(i)
+        if i == 1
+            plothist = 1;
+        elseif i >= plotcond2
+            plothist = 1;
+            plotcond2 = plotcond2 + plotval;
+        end
+        [avg(floor(i/plotcond) + 1), std(floor(i/plotcond)+1)] = zAngles(tempD, plothist);
+        tnew(floor(i/plotcond) + 1) = t(i);
+        
+        if plothist
+            avg(floor(i/plotcond) + 1)
+            std(floor(i/plotcond) + 1)
+            t(i)
+        end
+        
+        if t(i) < cycle
+            [avg2(floor(i/plotcond) + 1), std2(floor(i/plotcond) + 1)] = zAngles(tempD, 0);
+            tnew2(floor(i/plotcond) + 1) = t(i);
+        end
+        %[avg(i), std(i)] = zAngles(tempD);
     end
     
-    avg
-    std
+%     avg
+%     std
+    figure(9)
+    plot(tnew, avg)
+    hold on
+    plot(tnew, avg + std)
+    plot(tnew, avg - std)
+    axis([0 3*cycle -0.1 (pi + 0.1)])
+    xlabel('Time')
+    ylabel('Average particle orientation wrt z-axis')
+    title('Average particle orientation over time')
+    yyaxis right
+    y = frac*M*sin(tnew*2*pi*freq + pi/2*(freq == 0));
+    plot(tnew, y)
     
+    figure(10)
+    yyaxis left
+    plot(tnew2, avg2)
+    hold on
+    plot(tnew2, avg2 + std2)
+    plot(tnew2, avg2 - std2)
+    axis([0 cycle -0.1 (pi + 0.1)])
+    xlabel('Time')
+    ylabel('Average particle orientation wrt z-axis')
+    title('Average particle orientation over time')
+    yyaxis right
+    y = frac*M*sin(tnew2*2*pi*freq + pi/2*(freq == 0));
+    plot(tnew2, y)
 %     if rem(it, 500) == 0 && it <= 2000
 %         Ddata(:, :, it/500 + 1) = D;
 %     end
