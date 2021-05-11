@@ -13,7 +13,7 @@ defaultHtoM = 5; % ratio of magnetic to electric fields
 defaultR    = 0.5*10^-6;
 defaultrhok = 5.28*(1/1000)*(100/1)^3;% density of particles
 defaultM    = 72*defaultrhok; % magnetization
-defaulteta  = 3500*(1/1000);%dieletric permitivitty of XX
+defaulteta  = 0.1; %3500*(1/1000);%dieletric permitivitty of XX
 defaulttmax = 6000000*3;
 defaultmaxit= 10000;
 
@@ -129,8 +129,10 @@ else
 end
 
 % Plotting conditions are defined
-plotmult = 1000; % this determines the multiples of it at which the program will plot the state
-times = zeros(maxit/plotmult,1);
+plotmult = 5*10^7; %1000; % this determines the multiples of it at which the program will plot the state
+%times = zeros(maxit/plotmult,1);
+plotmult2 = 10^5;
+
 
 %%%%%%%% APPLY ELELCTRIC AND MAGNETIC EXTERNAL FIELDS %%%%%%%%%%%
 E0x = 0; E0y = 0; E0z = 0; %100*10^6; %applied ELECTRIC field [V/m]
@@ -202,9 +204,9 @@ h = 0; % ADDED - REMOVE LATER
 maxDeflection = 0;
 
 %% Iterative Solver
-while it<maxit && tf<tmax*60 && t<0.5
+while t<0.3 %it<maxit && tf<tmax*60 && t<0.3
     
-while t<i*0.0001 && t<0.5
+while t<i*0.0001 && t<0.3
     
 %while it<maxit && tf<tmax*60 && maxDeflection < 10
     
@@ -225,6 +227,9 @@ while t<i*0.0001 && t<0.5
     X(2,Iyminus)=X(2,Iyminus)+2*dim;
     X(3,Izplus)=X(3,Izplus)-2*dim;
     X(3,Izminus)=X(3,Izminus)+2*dim;
+    
+    % Set a plot condition for the histograms
+    plothist = 0;
     
     %Force and field calculations
 
@@ -253,7 +258,9 @@ while t<i*0.0001 && t<0.5
     kW = zeros(3, N, 4);
     
     % Declare the time step
-    h = abs(t-i*0.0001);
+    %h = abs(t-i*0.0001);
+    h = 10^-9;
+
     
     for j = 1:4
         
@@ -432,7 +439,7 @@ while t<i*0.0001 && t<0.5
         tempOmega = omega + h*timeScale.*kW(:, : , fibonacci(j + 1));
 
         % Set the magnetic field based on the current time
-        H0z = 10^5*sin((t+timeScale*h)*4*pi/10);
+        H0z = 0.1*M*sin((t+timeScale*h)*2*pi*10);
 
         % Magnetic Field calculations
         Hddx = (M*V/4/pi)*sum((1./r.^3-eye(N)).*(3*DmR.*rhatx-Dmx));
@@ -494,7 +501,7 @@ while t<i*0.0001 && t<0.5
         %v = [vx;vy;vz];
         %T = [Tx;Ty;Tz];
         
-        alpha = [alphaglobx; alphagloby; alphaglobz];
+        alpha = [alphaglobx'; alphagloby'; alphaglobz'];
 
         %Numerical Integration
 
@@ -536,9 +543,6 @@ while t<i*0.0001 && t<0.5
 %         Ddata(:, :, it/500 + 1) = D;
 %     end
     maxDeflection = 180/pi*max(acos(sum(D(:,:).*Ddata(:,:,1), 2)./(sqrt(sum(D(:,:).^2,2)).*sqrt(sum(Ddata(:,:,1).^2,2)))));
-    
-        %Increasing the loop parameters
-    it = it+1;
 
         % Keeping track of running time
     tf = cputime-ti;
@@ -547,8 +551,34 @@ while t<i*0.0001 && t<0.5
     if plotcond == 0
         it
        t
+       plothist = 1;
     end
     
+    if it == 1
+        plothist = 1;
+    end
+    
+    plotcond2 = rem(it, plotmult2);
+    
+    if plotcond2 == 0 || it == 1
+        [avg(floor(it/plotmult2) + 1), std(floor(it/plotmult2)+1)] = zAngles(tempD, plothist);
+        tnew(floor(it/plotmult2) + 1) = t;
+    end
+        
+    if plothist
+        avg(floor(it/plotmult) + 1)
+        std(floor(it/plotmult) + 1)
+        t
+    end
+        
+    if plotcond2 && t <= 0.1
+        [avg2(floor(it/plotmult2) + 1), std2(floor(it/plotmult2) + 1)] = zAngles(tempD, 0);
+        tnew2(floor(it/plotmult2) + 1) = t;
+    end
+    
+            %Increasing the loop parameters
+    it = it+1;
+
 %     plotcond = rem(it,plotmult); 
 %      
 %     if plotcond == 0
@@ -610,6 +640,26 @@ while t<i*0.0001 && t<0.5
 %     end
     
 end
+
+    figure(9)
+    plot(tnew, avg)
+    hold on
+    plot(tnew, avg + std)
+    plot(tnew, avg - std)
+    axis([0 0.3 0 pi])
+    xlabel('Time')
+    ylabel('Average particle orientation wrt z-axis')
+    title('Average particle orientation over time')
+
+    figure(10)
+    plot(tnew2, avg2)
+    hold on
+    plot(tnew2, avg2 + std2)
+    plot(tnew2, avg2 - std2)
+    axis([0 0.1 0 pi])
+    xlabel('Time')
+    ylabel('Average particle orientation wrt z-axis')
+    title('Average particle orientation over time')
 
     tdata(i) = t;
     
