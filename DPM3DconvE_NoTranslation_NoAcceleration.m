@@ -130,7 +130,7 @@ else
 end
 
 % Plotting conditions are defined
-plotmult = 1000; % this determines the multiples of it at which the program will plot the state
+plotmult = 500; % this determines the multiples of it at which the program will plot the state
 times = zeros(maxit/plotmult,1);
 
 %%%%%%%% APPLY ELELCTRIC AND MAGNETIC EXTERNAL FIELDS %%%%%%%%%%%
@@ -178,6 +178,8 @@ beta = 40; %Repelling parameter
 J(1) = 1/5*(b^2 + c^2); %Moment of inertia of particles along a axis
 J(2) = J(1); %Moment of inertia of particles along b axis
 J(3) = 1/5*(a^2 + b^2); %Moment of inertia of particles along c axis
+frac = 1;
+freq = 0;
 
 % Useful operators
 corrector  = ones(N,N)-2*tril(ones(N,N),-1);
@@ -201,11 +203,14 @@ tf= 0;
 ti= cputime;
 h = 0; % ADDED - REMOVE LATER
 maxDeflection = 0;
+avg = zeros(1, 6);
+std = zeros(1, 6);
+[avg(1), std(1)] = zAngles(D);
 
 %% Iterative Solver
-while it<maxit && tf<tmax*60 && t<0.5
+while it<maxit && tf<tmax*60 && t<0.00025
     
-while t<i*0.0001 && t<0.5
+while t<i*0.0001 && t<0.00025
     
 %while it<maxit && tf<tmax*60 && maxDeflection < 10
     
@@ -254,7 +259,8 @@ while t<i*0.0001 && t<0.5
     %kW = zeros(3, N, 4);
     
     % Declare the time step
-    h = abs(t-i*0.0001);
+    %h = abs(t-i*0.0001);
+    h = 10^-7;
     
     for j = 1:4
         
@@ -378,7 +384,7 @@ while t<i*0.0001 && t<0.5
         %Fy = sum(Fmagy + Frepy + Fdepy);
         %Fz = sum(Fmagz + Frepz + Fdepz);
         
-        H0z = 10^5; %*sin((t+timeScale*h)*4*pi/10);
+        H0z = frac*M*sin((t+timeScale*h)*2*pi*freq + (freq == 0)*pi/2);
     
         % Magnetic Field calculations
         Hddx = (M*V/4/pi)*sum((1./r.^3-eye(N)).*(3*DmR.*rhatx-Dmx));
@@ -518,6 +524,7 @@ while t<i*0.0001 && t<0.5
     if plotcond == 0
         it
        t
+       [avg(it/plotmult + 1), std(it/plotmult + 1)] = zAngles(D);
     end
     
 %     plotcond = rem(it,plotmult); 
@@ -595,6 +602,9 @@ end
 end
     Xdata(:,:,2)  = X;
     Ddata(:,:,2)  = D;
+    
+    avg
+    std
     
     %maxDeflection1 = 180/pi*max(acos(sum(Ddata(:,1:2,2).*Ddata(:,1:2,1), 2)./(sqrt(sum(Ddata(:,1:2,2).^2,2)).*sqrt(sum(Ddata(:,1:2,1).^2,2)))))
     %maxDeflection2 = 180/pi*max(acos(sum(Ddata(:,2:3,2).*Ddata(:,2:3,1), 2)./(sqrt(sum(Ddata(:,2:3,2).^2,2)).*sqrt(sum(Ddata(:,2:3,1).^2,2)))))
